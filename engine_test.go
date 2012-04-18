@@ -74,7 +74,22 @@ func TestSuicide(t *testing.T) {
   goban := NewArrayGoban(3, 4, ".x.." +
                                "x.xx" +
                                ".xo.")
-  if !Suicide(goban, 0, 0, BLACK) {
-    t.Error("Suicide problem")
+  testcases := []struct {
+    y, x int
+    color Position
+    expected bool
+  } {
+    {0, 0, WHITE, true},
+    {0, 2, WHITE, false},
+    {2, 3, WHITE, true},
+    {0, 0, BLACK, false},
+    {0, 2, BLACK, false},
+    {2, 3, BLACK, false},
+  }
+  for _, tc := range testcases {
+    if Suicide(goban, tc.y, tc.x, tc.color) != tc.expected {
+      t.Errorf("Error in %d, %d for color %v, expecting %v",
+               tc.y, tc.x, tc.color, tc.expected)
+    }
   }
 }

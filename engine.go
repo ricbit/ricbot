@@ -15,6 +15,7 @@ type Goban interface {
   SizeX() int
   SizeY() int
   GetPosition(y, x int) Position
+  SetPosition(y, x int, color Position)
   GetVisitorMarker() VisitorMarker
 }
 
@@ -94,6 +95,10 @@ func (g *ArrayGoban) GetPosition(y, x int) Position {
   return g.board[y][x]
 }
 
+func (g *ArrayGoban) SetPosition(y, x int, color Position) {
+  g.board[y][x] = color
+}
+
 func (g *ArrayGoban) ClearMarks() {
   for j := 0; j < g.size_y; j++ {
     for i := 0; i < g.size_x; i++ {
@@ -122,11 +127,21 @@ func valid(y, x, maxY, maxX int) bool {
   return x >= 0 && y >= 0 && x < maxX && y < maxY
 }
 
+var dx = []int{1, -1, 0, 0}
+var dy = []int{0, 0, 1, -1}
+
+func iterateNeighbours(y, x, maxY, maxX int, callback func(y, x int)) {
+  for i := 0; i < 4; i++ {
+    nx, ny := x + dx[i], y + dy[i]
+    if valid(ny, nx, maxY, maxX) {
+      callback(ny, nx)
+    }
+  }
+}
+
 func CountLiberties(g Goban, y, x int) int {
   liberties := 0
   color := g.GetPosition(y, x)
-  dx := []int{1, -1, 0, 0}
-  dy := []int{0, 0, 1, -1}
   next := NewListStack()
   marks := g.GetVisitorMarker()
   marks.ClearMarks()
@@ -134,9 +149,8 @@ func CountLiberties(g Goban, y, x int) int {
   next.Push(encode(y, x))
   for !next.Empty() {
     y, x := decode(next.Pop())
-    for i := 0; i < 4; i++ {
-      nx, ny := x + dx[i], y + dy[i]
-      if valid(ny, nx, g.SizeY(), g.SizeX()) && !marks.IsMarked(ny, nx) {
+    iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+      if !marks.IsMarked(ny, nx) {
         switch g.GetPosition(ny, nx) {
         case EMPTY:
           liberties++
@@ -146,11 +160,52 @@ func CountLiberties(g Goban, y, x int) int {
           marks.SetMark(ny, nx)
         }
       }
-    }
+    })
   }
   return liberties
 }
 
-func Suicide(g Goban, x, y int, color Position) bool {
-  return true
+func iterateAll(g Goban, color Position, callback func(y, x int)) {
+  for j := 0; j < g.SizeY(); j++ {
+    for i := 0; i < g.SizeX(); i++ {
+      if g.GetPosition(j, i) == color {
+        callback(j, i)
+      }
+    }
+  }
+}
+
+func Opposite(color Position) Position {
+  if color == BLACK {
+    return WHITE
+  }
+  return BLACK
+}
+
+func Suicide(g Goban, y, x int, color Position) bool {
+  liberties := 0
+  iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+    if g.GetPosition(ny, nx) == EMPTY {
+      liberties++
+    }
+  })
+  if liberties > 0 {
+    return false
+  }
+  g.SetPosition(y, x, color)
+  defer func() { g.SetPosition(y, x, EMPTY) }()
+  suicide := true
+  opponent := Opposite(color)
+  iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+    if suicide && g.GetPosition(ny, nx) == opponent {
+      liberties := CountLiberties(g, ny, nx)
+      if liberties == 0 {
+        suicide = false
+      }
+    }
+  })
+  if !suicide {
+    return false
+  }
+  return CountLiberties(g, y, x) == 0
 }
