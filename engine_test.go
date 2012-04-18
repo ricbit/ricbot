@@ -71,9 +71,9 @@ func TestCountLiberties(t *testing.T) {
 }
 
 func TestSuicide(t *testing.T) {
-  goban := NewArrayGoban(3, 4, ".x.." +
-                               "x.xx" +
-                               ".xo.")
+  goban := NewArrayGoban(3, 9, ".x..x.xxx" +
+                               "x.xxx.xoo" +
+                               ".xo.x.xo.")
   testcases := []struct {
     y, x int
     color Position
@@ -82,9 +82,11 @@ func TestSuicide(t *testing.T) {
     {0, 0, WHITE, true},
     {0, 2, WHITE, false},
     {2, 3, WHITE, true},
+    {2, 8, WHITE, true},
     {0, 0, BLACK, false},
     {0, 2, BLACK, false},
     {2, 3, BLACK, false},
+    {2, 8, BLACK, false},
   }
   for _, tc := range testcases {
     if Suicide(goban, tc.y, tc.x, tc.color) != tc.expected {
