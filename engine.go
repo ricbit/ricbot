@@ -24,6 +24,36 @@ type VisitorMarker interface {
   IsMarked(y, x int) bool
 }
 
+type Stack interface {
+  Push(int)
+  Pop() int
+  Empty() bool
+}
+
+type ListStack struct {
+  stack *list.List
+}
+
+func (s *ListStack) Push(value int) {
+  s.stack.PushBack(value)
+}
+
+func (s *ListStack) Pop() int {
+  value := s.stack.Front()
+  s.stack.Remove(value)
+  return value.Value.(int)
+}
+
+func (s *ListStack) Empty() bool {
+  return s.stack.Len() == 0
+}
+
+func NewListStack() *ListStack {
+  stack := new(ListStack)
+  stack.stack = list.New()
+  return stack
+}
+
 type ArrayGoban struct {
   size_x, size_y int
   board [][]Position
@@ -73,7 +103,7 @@ func (g *ArrayGoban) ClearMarks() {
 }
 
 func (g *ArrayGoban) SetMark(y, x int) {
-  g.board[y][x] += 0x4
+  g.board[y][x] |= 0x4
 }
 
 func (g *ArrayGoban) IsMarked(y, x int) bool {
@@ -97,25 +127,22 @@ func CountLiberties(g Goban, y, x int) int {
   color := g.GetPosition(y, x)
   dx := []int{1, -1, 0, 0}
   dy := []int{0, 0, 1, -1}
-  next := list.New()
+  next := NewListStack()
   marks := g.GetVisitorMarker()
   marks.ClearMarks()
   marks.SetMark(y, x)
-  next.PushBack(encode(y, x))
-  for next.Len() != 0 {
-    front := next.Front()
-    next.Remove(front)
-    y, x := decode(front.Value.(int))
+  next.Push(encode(y, x))
+  for !next.Empty() {
+    y, x := decode(next.Pop())
     for i := 0; i < 4; i++ {
-      nx := x + dx[i]
-      ny := y + dy[i]
+      nx, ny := x + dx[i], y + dy[i]
       if valid(ny, nx, g.SizeY(), g.SizeX()) && !marks.IsMarked(ny, nx) {
         switch g.GetPosition(ny, nx) {
         case EMPTY:
           liberties++
           marks.SetMark(ny, nx)
         case color:
-          next.PushBack(encode(ny, nx))
+          next.Push(encode(ny, nx))
           marks.SetMark(ny, nx)
         }
       }
@@ -124,3 +151,6 @@ func CountLiberties(g Goban, y, x int) int {
   return liberties
 }
 
+func Suicide(g Goban, x, y int, color Position) bool {
+  return true
+}

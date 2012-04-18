@@ -29,6 +29,23 @@ func TestNewArrayGoban(t *testing.T) {
   }
 }
 
+func TestArrayGobanVisitorMarker(t *testing.T) {
+  goban := NewArrayGoban(1, 1, ".")
+  marker := goban.GetVisitorMarker()
+  marker.ClearMarks()
+  if marker.IsMarked(0,0) {
+    t.Error("Clear not working")
+  }
+  marker.SetMark(0,0)
+  if !marker.IsMarked(0,0) {
+    t.Error("SetMark not working")
+  }
+  marker.SetMark(0,0)
+  if !marker.IsMarked(0,0) {
+    t.Error("SetMark not working")
+  }
+}
+
 func TestCountLiberties(t *testing.T) {
   goban := NewArrayGoban(3, 9, "o.o..ooo." +
                                ".o.x.o.o." +
@@ -50,5 +67,14 @@ func TestCountLiberties(t *testing.T) {
   }
   if CountLiberties(goban, 2, 8) != 1 {
     t.Error("Liberties in the corner group")
+  }
+}
+
+func TestSuicide(t *testing.T) {
+  goban := NewArrayGoban(3, 4, ".x.." +
+                               "x.xx" +
+                               ".xo.")
+  if !Suicide(goban, 0, 0, BLACK) {
+    t.Error("Suicide problem")
   }
 }
