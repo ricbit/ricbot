@@ -92,11 +92,11 @@ func (g *ArrayGoban) SizeY() int {
 }
 
 func (g *ArrayGoban) GetPosition(y, x int) Position {
-  return g.board[y][x]
+  return g.board[y][x] & 0x3
 }
 
 func (g *ArrayGoban) SetPosition(y, x int, color Position) {
-  g.board[y][x] = color
+  g.board[y][x] = g.board[y][x] & (^0x3) | color
 }
 
 func (g *ArrayGoban) ClearMarks() {
@@ -208,4 +208,12 @@ func Suicide(g Goban, y, x int, color Position) bool {
     return false
   }
   return CountLiberties(g, y, x) == 0
+}
+
+func ValidMoves(g Goban, color Position, callback func (y, x int)) {
+  iterateAll(g, EMPTY, func (y, x int) {
+    if !Suicide(g, y, x, color) {
+      callback(y, x)
+    }
+  })
 }

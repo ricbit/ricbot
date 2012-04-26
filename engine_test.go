@@ -33,16 +33,19 @@ func TestArrayGobanVisitorMarker(t *testing.T) {
   goban := NewArrayGoban(1, 1, ".")
   marker := goban.GetVisitorMarker()
   marker.ClearMarks()
-  if marker.IsMarked(0,0) {
+  if marker.IsMarked(0, 0) {
     t.Error("Clear not working")
   }
-  marker.SetMark(0,0)
-  if !marker.IsMarked(0,0) {
+  marker.SetMark(0, 0)
+  if !marker.IsMarked(0, 0) {
     t.Error("SetMark not working")
   }
-  marker.SetMark(0,0)
-  if !marker.IsMarked(0,0) {
+  marker.SetMark(0, 0)
+  if !marker.IsMarked(0, 0) {
     t.Error("SetMark not working")
+  }
+  if goban.GetPosition(0, 0) != EMPTY {
+    t.Error("GetPosition not working")
   }
 }
 
@@ -94,4 +97,51 @@ func TestSuicide(t *testing.T) {
                tc.y, tc.x, tc.color, tc.expected)
     }
   }
+}
+
+type Point struct {
+  y, x int
+}
+
+func collectValidMoves(g Goban, color Position) []Point {
+  slice := make([]Point, 0)
+  ValidMoves(g, color, func (y, x int) {
+    slice = append(slice, Point{y, x})
+  })
+  return slice
+}
+
+func comparePoints(t *testing.T, expected, actual []Point) {
+  if len(expected) != len(actual) {
+    t.Errorf("Different sizes, expected %v actual %v", expected, actual)
+    return
+  }
+  for _, exp_value := range expected {
+    found := false
+    for _, act_value := range actual {
+      if exp_value == act_value {
+        found = true
+      }
+    }
+    if !found {
+      t.Errorf("Different values, expected %v actual %v", expected, actual)
+      return
+    }
+  }
+}
+
+func TestValidMoves(t *testing.T) {
+  goban := NewArrayGoban(3, 4, ".xox" +
+                               "xo.x" +
+                               ".xx.")
+  expected_white := []Point {
+    {0, 0},
+  }
+  expected_black := []Point {
+    {0, 0}, {1, 2}, {2, 0}, {2, 3},
+  }
+  actual_white := collectValidMoves(goban, WHITE)
+  actual_black := collectValidMoves(goban, BLACK)
+  comparePoints(t, expected_white, actual_white)
+  comparePoints(t, expected_black, actual_black)
 }
