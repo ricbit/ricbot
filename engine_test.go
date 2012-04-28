@@ -147,7 +147,6 @@ func TestValidMoves(t *testing.T) {
   comparePoints(t, expected_black, actual_black)
 }
 
-
 // Hook up gocheck into the gotest runner.
 func Test(t *testing.T) { TestingT(t) }
 
@@ -184,4 +183,30 @@ func (s *S) TestRemoveGroup(c *C) {
   c.Check(ToString(goban2), Equals, "xx.x" +
                                     "xo.x" +
                                     ".xx.")
+}
+
+func NewGameState(y, x int, goban string) *GameState {
+  return &GameState{NewArrayGoban(y, x, goban), 6.5, 0, 0}
+}
+
+func (s *S) TestPlay(c *C) {
+  state1 := NewGameState(3, 4, "xxox" +
+                               "xo.x" +
+                               ".xx.")
+  Play(state1, 1, 2, BLACK)
+  c.Check(ToString(state1.goban), Equals, "xx.x" +
+                                          "x.xx" +
+                                          ".xx.")
+  c.Check(state1.captured_white, Equals, 2)
+  c.Check(state1.captured_black, Equals, 0)
+
+  state2 := NewGameState(3, 4, "xxox" +
+                               "xo.x" +
+                               ".xx.")
+  Play(state2, 2, 0, WHITE)
+  c.Check(ToString(state2.goban), Equals, "..ox" +
+                                          ".o.x" +
+                                          "oxx.")
+  c.Check(state2.captured_white, Equals, 0)
+  c.Check(state2.captured_black, Equals, 3)
 }

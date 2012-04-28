@@ -27,7 +27,7 @@ type VisitorMarker interface {
 
 type GameState struct {
   goban Goban
-  komi int
+  komi float32
   captured_white, captured_black int
 }
 
@@ -136,10 +136,10 @@ func valid(y, x, maxY, maxX int) bool {
 var dx = []int{1, -1, 0, 0}
 var dy = []int{0, 0, 1, -1}
 
-func iterateNeighbours(y, x, maxY, maxX int, callback func(y, x int)) {
+func iterateNeighbours(g Goban, y, x int, callback func(y, x int)) {
   for i := 0; i < 4; i++ {
     nx, ny := x + dx[i], y + dy[i]
-    if valid(ny, nx, maxY, maxX) {
+    if valid(ny, nx, g.SizeY(), g.SizeX()) {
       callback(ny, nx)
     }
   }
@@ -157,7 +157,7 @@ func iterateGroup(g Goban, y, x int,
   next.Push(encode(y, x))
   for !next.Empty() {
     y, x := decode(next.Pop())
-    iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+    iterateNeighbours(g, y, x, func (ny, nx int) {
       if !marks.IsMarked(ny, nx) {
         if g.GetColor(ny, nx) == color {
           group_callback(ny, nx)
@@ -201,7 +201,7 @@ func Opposite(color Color) Color {
 func Suicide(g Goban, y, x int, color Color) bool {
   // It's not suicide if you have an empty cell next to you.
   liberties := 0
-  iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+  iterateNeighbours(g, y, x, func (ny, nx int) {
     if g.GetColor(ny, nx) == EMPTY {
       liberties++
     }
@@ -214,7 +214,7 @@ func Suicide(g Goban, y, x int, color Color) bool {
   // It's not suicide if you are capturing something.
   suicide := true
   opponent := Opposite(color)
-  iterateNeighbours(y, x, g.SizeY(), g.SizeX(), func (ny, nx int) {
+  iterateNeighbours(g, y, x, func (ny, nx int) {
     if suicide && g.GetColor(ny, nx) == opponent {
       liberties := CountLiberties(g, ny, nx)
       if liberties == 0 {
@@ -246,13 +246,22 @@ func RemoveGroup(g Goban, y, x int) int {
   return captured
 }
 
+func addCaptured(state *GameState, color Color, captured int) {
+  switch color {
+  case WHITE:
+    state.captured_black += captured
+  case BLACK:
+    state.captured_white += captured
+  }
+}
+
 func Play(state *GameState, y, x int, color Color) {
   state.goban.SetColor(y, x, color)
-  my, mx := state.goban.SizeY(), state.goban.SizeX()
-  iterateNeighbours(y, x, my, mx, func (ny, nx int) {
+  iterateNeighbours(state.goban, y, x, func (ny, nx int) {
     if state.goban.GetColor(ny, nx) == Opposite(color) {
       if CountLiberties(state.goban, ny, nx) == 0 {
-        RemoveGroup(state.goban, ny, nx)
+        captured := RemoveGroup(state.goban, ny, nx)
+        addCaptured(state, color, captured)
       }
     }
   })
