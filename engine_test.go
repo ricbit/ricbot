@@ -100,19 +100,7 @@ func TestSuicide(t *testing.T) {
   }
 }
 
-type Point struct {
-  y, x int
-}
-
-func collectValidMoves(g Goban, color Color) []Point {
-  slice := make([]Point, 0)
-  ValidMoves(g, color, func (y, x int) {
-    slice = append(slice, Point{y, x})
-  })
-  return slice
-}
-
-func comparePoints(t *testing.T, expected, actual []Point) {
+func comparePoints(t *testing.T, expected, actual []Position) {
   if len(expected) != len(actual) {
     t.Errorf("Different sizes, expected %v actual %v", expected, actual)
     return
@@ -135,14 +123,14 @@ func TestValidMoves(t *testing.T) {
   goban := NewArrayGoban(3, 4, ".xox" +
                                "xo.x" +
                                ".xx.")
-  expected_white := []Point {
+  expected_white := []Position {
     {0, 0},
   }
-  expected_black := []Point {
+  expected_black := []Position {
     {0, 0}, {1, 2}, {2, 0}, {2, 3},
   }
-  actual_white := collectValidMoves(goban, WHITE)
-  actual_black := collectValidMoves(goban, BLACK)
+  actual_white := GetMoveList(goban, WHITE)
+  actual_black := GetMoveList(goban, BLACK)
   comparePoints(t, expected_white, actual_white)
   comparePoints(t, expected_black, actual_black)
 }
@@ -176,6 +164,7 @@ func (s *S) TestRemoveGroup(c *C) {
   c.Check(ToString(goban1), Equals, "..ox" +
                                     ".o.x" +
                                     ".xx.")
+
   goban2 := NewArrayGoban(3, 4, "xxox" +
                                 "xo.x" +
                                 ".xx.")
@@ -209,4 +198,24 @@ func (s *S) TestPlay(c *C) {
                                           "oxx.")
   c.Check(state2.captured_white, Equals, 0)
   c.Check(state2.captured_black, Equals, 3)
+}
+
+func (s *S) TestGetRandomMove(c *C) {
+  goban := NewArrayGoban(1, 4, "....")
+  histogram := make([]int, 4)
+  lots := 10000
+  for i := 0; i < lots; i++ {
+    move := GetRandomMove(goban, WHITE)
+    histogram[move.x]++
+  }
+  mean := float32(lots) / float32(4)
+  variance := float32(0.0)
+  for _, val := range histogram {
+    tmp := float32(val) - mean
+    variance += tmp * tmp
+  }
+  variance /= float32(lots)
+  if variance > 0.1 {
+    c.Errorf("Variance is too high: %f\n", variance)
+  }
 }

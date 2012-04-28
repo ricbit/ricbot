@@ -1,6 +1,7 @@
 package engine
 
 import "container/list"
+import "math/rand"
 
 const (
   EMPTY = iota
@@ -265,4 +266,21 @@ func Play(state *GameState, y, x int, color Color) {
       }
     }
   })
+}
+
+type Position struct {
+  y, x int
+}
+
+func GetMoveList(g Goban, color Color) []Position {
+  moves := make([]Position, 0, g.SizeY() * g.SizeX())
+  ValidMoves(g, color, func (y, x int) {
+    moves = append(moves, Position{y, x})
+  })
+  return moves
+}
+
+func GetRandomMove(g Goban, color Color) Position {
+  moves := GetMoveList(g, color)
+  return moves[rand.Intn(len(moves))]
 }
