@@ -1,5 +1,6 @@
 package engine
 
+import . "launchpad.net/gocheck"
 import "testing"
 
 func TestNewArrayGoban(t *testing.T) {
@@ -13,16 +14,16 @@ func TestNewArrayGoban(t *testing.T) {
     for i := 0; i < 4; i++ {
       switch {
       case i == 1 && j == 0:
-        if goban.GetPosition(j, i) != WHITE {
-          t.Error("GetPosition white.")
+        if goban.GetColor(j, i) != WHITE {
+          t.Error("GetColor white.")
         }
       case i == 2 && j == 2:
-        if goban.GetPosition(j, i) != BLACK {
-          t.Error("GetPosition black.")
+        if goban.GetColor(j, i) != BLACK {
+          t.Error("GetColor black.")
         }
       default:
-        if goban.GetPosition(j, i) != EMPTY {
-          t.Error("GetPosition empty.")
+        if goban.GetColor(j, i) != EMPTY {
+          t.Error("GetColor empty.")
         }
       }
     }
@@ -44,8 +45,8 @@ func TestArrayGobanVisitorMarker(t *testing.T) {
   if !marker.IsMarked(0, 0) {
     t.Error("SetMark not working")
   }
-  if goban.GetPosition(0, 0) != EMPTY {
-    t.Error("GetPosition not working")
+  if goban.GetColor(0, 0) != EMPTY {
+    t.Error("GetColor not working")
   }
 }
 
@@ -79,7 +80,7 @@ func TestSuicide(t *testing.T) {
                                ".xo.x.xo.")
   testcases := []struct {
     y, x int
-    color Position
+    color Color
     expected bool
   } {
     {0, 0, WHITE, true},
@@ -103,7 +104,7 @@ type Point struct {
   y, x int
 }
 
-func collectValidMoves(g Goban, color Position) []Point {
+func collectValidMoves(g Goban, color Color) []Point {
   slice := make([]Point, 0)
   ValidMoves(g, color, func (y, x int) {
     slice = append(slice, Point{y, x})
@@ -144,4 +145,43 @@ func TestValidMoves(t *testing.T) {
   actual_black := collectValidMoves(goban, BLACK)
   comparePoints(t, expected_white, actual_white)
   comparePoints(t, expected_black, actual_black)
+}
+
+
+// Hook up gocheck into the gotest runner.
+func Test(t *testing.T) { TestingT(t) }
+
+type S struct{}
+var _ = Suite(&S{})
+
+func ToString(g Goban) string {
+  output := ""
+  conv := map[Color] string {
+    EMPTY : ".",
+    BLACK : "x",
+    WHITE : "o",
+  }
+  for j := 0; j < g.SizeY(); j++ {
+    for i := 0; i < g.SizeX(); i++ {
+      output += conv[g.GetColor(j,i)]
+    }
+  }
+  return output
+}
+
+func (s *S) TestRemoveGroup(c *C) {
+  goban1 := NewArrayGoban(3, 4, "xxox" +
+                                "xo.x" +
+                                ".xx.")
+  c.Check(RemoveGroup(goban1, 0, 0), Equals, 3)
+  c.Check(ToString(goban1), Equals, "..ox" +
+                                    ".o.x" +
+                                    ".xx.")
+  goban2 := NewArrayGoban(3, 4, "xxox" +
+                                "xo.x" +
+                                ".xx.")
+  c.Check(RemoveGroup(goban2, 0, 2), Equals, 1)
+  c.Check(ToString(goban2), Equals, "xx.x" +
+                                    "xo.x" +
+                                    ".xx.")
 }
