@@ -174,10 +174,6 @@ func (s *S) TestRemoveGroup(c *C) {
                                     ".xx.")
 }
 
-func NewGameState(y, x int, goban string) *GameState {
-  return &GameState{NewArrayGoban(y, x, goban), 6.5, 0, 0}
-}
-
 func (s *S) TestPlay(c *C) {
   state1 := NewGameState(3, 4, "xxox" +
                                "xo.x" +
@@ -200,12 +196,37 @@ func (s *S) TestPlay(c *C) {
   c.Check(state2.captured_black, Equals, 3)
 }
 
+func (s *S) TestSinglePointEye(c *C) {
+  goban := NewArrayGoban(3, 4, "..ox" +
+                               "oxxx" +
+                               "x.x.")
+  color, ok := SinglePointEye(goban, 2, 3)
+  c.Check(ok, Equals, true)
+  c.Check(color, Equals, Color(BLACK))
+
+  color, ok = SinglePointEye(goban, 0, 0)
+  c.Check(ok, Equals, false)
+
+  color, ok = SinglePointEye(goban, 2, 1)
+  c.Check(ok, Equals, false)
+}
+
+func (s *S) TestEstimatePoints(c *C) {
+  goban := NewArrayGoban(3, 4, ".o.x" +
+                               "ooxx" +
+                               "xxx.")
+  black, white := EstimatePoints(goban)
+  c.Check(black, Equals, 7)
+  c.Check(white, Equals, 4)
+}
+
 func (s *S) TestGetRandomMove(c *C) {
   goban := NewArrayGoban(1, 4, "....")
   histogram := make([]int, 4)
   lots := 10000
   for i := 0; i < lots; i++ {
-    move := GetRandomMove(goban, WHITE)
+    move, ok := GetRandomMove(goban, WHITE)
+    c.Check(ok, Equals, true)
     histogram[move.x]++
   }
   mean := float32(lots) / float32(4)
@@ -218,4 +239,10 @@ func (s *S) TestGetRandomMove(c *C) {
   if variance > 0.1 {
     c.Errorf("Variance is too high: %f\n", variance)
   }
+}
+
+func (s *S) TestGetRandomMoveEmpty(c *C) {
+  goban := NewArrayGoban(1, 4, "xoxo")
+  _, ok := GetRandomMove(goban, WHITE)
+  c.Check(ok, Equals, false)
 }

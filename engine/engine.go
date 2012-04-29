@@ -2,6 +2,8 @@ package engine
 
 import "container/list"
 import "math/rand"
+import "strings"
+import "fmt"
 
 const (
   EMPTY = iota
@@ -18,6 +20,7 @@ type Goban interface {
   GetColor(y, x int) Color
   SetColor(y, x int, color Color)
   GetVisitorMarker() VisitorMarker
+  Copy() Goban
 }
 
 type VisitorMarker interface {
@@ -86,6 +89,17 @@ func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
   return goban
 }
 
+func (g *ArrayGoban) Copy() Goban {
+  new_goban := new(ArrayGoban)
+  new_goban.size_x = g.size_x
+  new_goban.size_y = g.size_y
+  new_goban.board = make([][]Color, new_goban.size_y)
+  for i := 0; i < new_goban.size_y; i++ {
+    new_goban.board[i] = make([]Color, new_goban.size_x)
+  }
+  return new_goban
+}
+
 func (g *ArrayGoban) SizeX() int {
   return g.size_x
 }
@@ -146,6 +160,18 @@ func iterateNeighbours(g Goban, y, x int, callback func(y, x int)) {
   }
 }
 
+var diagx = []int{1, -1, 1, -1}
+var diagy = []int{1, 1, -1, -1}
+
+func iterateDiagonals(g Goban, y, x int, callback func(y, x int)) {
+  for i := 0; i < 4; i++ {
+    nx, ny := x + diagx[i], y + diagy[i]
+    if valid(ny, nx, g.SizeY(), g.SizeX()) {
+      callback(ny, nx)
+    }
+  }
+}
+
 func iterateGroup(g Goban, y, x int,
                   group_callback func(ny, nx int),
                   border_callback func(ny, nx int)) {
@@ -182,14 +208,20 @@ func CountLiberties(g Goban, y, x int) int {
   return liberties
 }
 
-func iterateAll(g Goban, color Color, callback func(y, x int)) {
+func iterateAll(g Goban, callback func(y, x int)) {
   for j := 0; j < g.SizeY(); j++ {
     for i := 0; i < g.SizeX(); i++ {
-      if g.GetColor(j, i) == color {
-        callback(j, i)
-      }
+      callback(j, i)
     }
   }
+}
+
+func iterateAllColor(g Goban, color Color, callback func(y, x int)) {
+  iterateAll(g, func (y, x int) {
+    if g.GetColor(y, x) == color {
+      callback(y, x)
+    }
+  })
 }
 
 func Opposite(color Color) Color {
@@ -231,9 +263,12 @@ func Suicide(g Goban, y, x int, color Color) bool {
 }
 
 func ValidMoves(g Goban, color Color, callback func (y, x int)) {
-  iterateAll(g, EMPTY, func (y, x int) {
+  iterateAllColor(g, EMPTY, func (y, x int) {
     if !Suicide(g, y, x, color) {
-      callback(y, x)
+      eye_color, ok := SinglePointEye(g, y, x)
+      if !ok || eye_color != color {
+        callback(y, x)
+      }
     }
   })
 }
@@ -268,6 +303,25 @@ func Play(state *GameState, y, x int, color Color) {
   })
 }
 
+func SinglePointEye(g Goban, y, x int) (Color, bool) {
+  histogram := make([]int, 4)
+  iterateNeighbours(g, y, x, func (ny, nx int) {
+    histogram[g.GetColor(ny, nx)]++
+  })
+  if histogram[EMPTY] > 0 || (histogram[BLACK] > 0 && histogram[WHITE] > 0) {
+    return EMPTY, false
+  }
+  color := Color(WHITE)
+  if histogram[BLACK] > 0 {
+    color = BLACK
+  }
+  diagonals := make([]int, 4)
+  iterateDiagonals(g, y, x, func (ny, nx int) {
+    diagonals[g.GetColor(ny, nx)]++
+  })
+  return color, diagonals[color] > diagonals[Opposite(color)]
+}
+
 type Position struct {
   y, x int
 }
@@ -280,7 +334,119 @@ func GetMoveList(g Goban, color Color) []Position {
   return moves
 }
 
-func GetRandomMove(g Goban, color Color) Position {
+func GetRandomMove(g Goban, color Color) (Position, bool) {
   moves := GetMoveList(g, color)
-  return moves[rand.Intn(len(moves))]
+  if len(moves) == 0 {
+    return Position{0, 0}, false
+  }
+  //fmt.Printf("Color %d, moves %v\n", color, moves)
+  return moves[rand.Intn(len(moves))], true
 }
+
+func dumpState(state *GameState) {
+  conv := map[Color] string {
+    EMPTY : ".",
+    BLACK : "x",
+    WHITE : "o",
+  }
+  fmt.Printf("--- cap white: %d, cap black %d\n",
+             state.captured_white, state.captured_black)
+  for j := 0; j < state.goban.SizeY(); j++ {
+    for i := 0; i < state.goban.SizeX(); i++ {
+      fmt.Printf(conv[state.goban.GetColor(j, i)])
+    }
+    fmt.Printf("\n")
+  }
+  fmt.Printf("\n")
+}
+
+func PlayRandomGame(state *GameState, color Color) {
+  limit := state.goban.SizeY() * state.goban.SizeX() * 3
+  for i := 0; i < limit; i++ {
+    move, ok := GetRandomMove(state.goban, color)
+    if !ok {
+      _, ok := GetRandomMove(state.goban, Opposite(color))
+      if !ok {
+        return
+      }
+      color = Opposite(color)
+      continue
+    }
+    Play(state, move.y, move.x, color)
+    //dumpState(state)
+    color = Opposite(color)
+  }
+}
+
+func EstimatePoints(g Goban) (black, white int) {
+  points := make([]int, 4)
+  iterateAll(g, func (y, x int) {
+    color := g.GetColor(y, x)
+    if color == EMPTY {
+      eye_color, ok := SinglePointEye(g, y, x)
+      if ok {
+        points[eye_color] += 1
+      }
+    } else {
+      points[color] += 1
+    }
+  })
+  return points[BLACK], points[WHITE]
+}
+
+func Winner(state *GameState) Color {
+  black, white := EstimatePoints(state.goban)
+  if float32(black) + state.komi > float32(white) {
+    return BLACK
+  }
+  return WHITE
+}
+
+type MoveStats struct {
+  win, total int
+}
+
+func copyState(state *GameState) *GameState {
+  new_state := new(GameState)
+  new_state.komi = state.komi
+  new_state.captured_white = state.captured_white
+  new_state.captured_black = state.captured_black
+  new_state.goban = state.goban.Copy()
+  return new_state
+}
+
+func GetBestMove(state *GameState, color Color, tries int) (y, x int) {
+  moves := GetMoveList(state.goban, color)
+  stats := make([]MoveStats, len(moves))
+  for i := 0; i < tries; i++ {
+    move := rand.Intn(len(moves))
+    copy_state := copyState(state)
+    copy_state.goban.SetColor(moves[move].y, moves[move].x, color)
+    PlayRandomGame(copy_state, color)
+    stats[move].total += 1
+    if Winner(copy_state) == color {
+      stats[move].win += 1
+    }
+  }
+  for i := 0; i < len(moves); i++ {
+    fmt.Printf("move %d %d : %d / %d = %f\n", 
+               moves[i].y, moves[i].x, stats[i].win, stats[i].total,
+               float32(stats[i].win) / float32(stats[i].total))
+  }
+  best := 0
+  for i := 1; i < len(moves); i++ {
+    if stats[i].win * stats[best].total > stats[best].win * stats[i].total {
+      best = i
+    }
+  }
+  return moves[best].y, moves[best].x
+}
+
+func NewEmptyGameState(y, x int) *GameState {
+  return &GameState{NewArrayGoban(y, x, strings.Repeat(".", y * x)), 6.5, 0, 0}
+}
+
+func NewGameState(y, x int, goban string) *GameState {
+    return &GameState{NewArrayGoban(y, x, goban), 6.5, 0, 0}
+}
+
