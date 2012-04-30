@@ -23,6 +23,7 @@ type Goban interface {
   SetColor(y, x int, color Color)
   GetVisitorMarker() VisitorMarker
   Copy() Goban
+  SetAllocator(alloc StackAllocator)
 }
 
 type VisitorMarker interface {
@@ -41,6 +42,25 @@ type Stack interface {
   Push(int)
   Pop() int
   Empty() bool
+}
+
+type StackAllocator interface {
+  GetStack() Stack
+  Mark()
+  Release()
+}
+
+type DumbAllocator struct {
+}
+
+func (a *DumbAllocator) GetStack() Stack {
+  return NewListStack()
+}
+
+func (a *DumbAllocator) Mark() {
+}
+
+func (a *DumbAllocator) Release() {
 }
 
 type ListStack struct {
@@ -85,7 +105,10 @@ func NewListStack() *ListStack {
   return stack
 }
 
+var slicestacks int = 0
+
 func NewSliceStack(capacity int) *SliceStack {
+  slicestacks++
   stack := new(SliceStack)
   stack.stack = make([]int, 0, capacity)
   return stack
@@ -94,6 +117,11 @@ func NewSliceStack(capacity int) *SliceStack {
 type ArrayGoban struct {
   size_x, size_y int
   board [][]Color
+}
+
+type SliceGoban struct {
+  size_x, size_y int
+  board []Color
 }
 
 func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
@@ -115,6 +143,28 @@ func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
   return goban
 }
 
+func NewSliceGoban(size_y, size_x int, init string) *SliceGoban {
+  goban := new(SliceGoban)
+  goban.size_x = size_x
+  goban.size_y = size_y
+  goban.board = make([]Color, size_y * size_x)
+  conv := map[byte] Color {
+    '.': EMPTY,
+    'o': WHITE,
+    'x': BLACK,
+  }
+  for j := 0; j < len(init); j++ {
+    goban.board[j] = conv[init[j]]
+  }
+  return goban
+}
+
+func (g *ArrayGoban) SetAllocator(alloc StackAllocator) {
+}
+
+func (g *SliceGoban) SetAllocator(alloc StackAllocator) {
+}
+
 func (g *ArrayGoban) Copy() Goban {
   new_goban := new(ArrayGoban)
   new_goban.size_x = g.size_x
@@ -122,7 +172,17 @@ func (g *ArrayGoban) Copy() Goban {
   new_goban.board = make([][]Color, new_goban.size_y)
   for i := 0; i < new_goban.size_y; i++ {
     new_goban.board[i] = make([]Color, new_goban.size_x)
+    copy(new_goban.board[i], g.board[i])
   }
+  return new_goban
+}
+
+func (g *SliceGoban) Copy() Goban {
+  new_goban := new(SliceGoban)
+  new_goban.size_x = g.size_x
+  new_goban.size_y = g.size_y
+  new_goban.board = make([]Color, new_goban.size_y * new_goban.size_x)
+  copy(new_goban.board, g.board)
   return new_goban
 }
 
@@ -130,7 +190,15 @@ func (g *ArrayGoban) SizeX() int {
   return g.size_x
 }
 
+func (g *SliceGoban) SizeX() int {
+  return g.size_x
+}
+
 func (g *ArrayGoban) GetVisitorMarker() VisitorMarker {
+  return g
+}
+
+func (g *SliceGoban) GetVisitorMarker() VisitorMarker {
   return g
 }
 
@@ -138,12 +206,24 @@ func (g *ArrayGoban) SizeY() int {
   return g.size_y
 }
 
+func (g *SliceGoban) SizeY() int {
+  return g.size_y
+}
+
 func (g *ArrayGoban) GetColor(y, x int) Color {
   return g.board[y][x] & 0x3
 }
 
+func (g *SliceGoban) GetColor(y, x int) Color {
+  return g.board[y * g.size_x + x] & 0x3
+}
+
 func (g *ArrayGoban) SetColor(y, x int, color Color) {
   g.board[y][x] = g.board[y][x] & (^0x3) | color
+}
+
+func (g *SliceGoban) SetColor(y, x int, color Color) {
+  g.board[y * g.size_x + x] = g.board[y * g.size_x + x] & (^0x3) | color
 }
 
 func (g *ArrayGoban) ClearMarks() {
@@ -154,12 +234,26 @@ func (g *ArrayGoban) ClearMarks() {
   }
 }
 
+func (g *SliceGoban) ClearMarks() {
+  for j := 0; j < len(g.board); j++ {
+    g.board[j] &= 0x3
+  }
+}
+
 func (g *ArrayGoban) SetMark(y, x int) {
   g.board[y][x] |= 0x4
 }
 
+func (g *SliceGoban) SetMark(y, x int) {
+  g.board[y * g.size_x + x] |= 0x4
+}
+
 func (g *ArrayGoban) IsMarked(y, x int) bool {
   return g.board[y][x] & 0x4 > 0
+}
+
+func (g *SliceGoban) IsMarked(y, x int) bool {
+  return g.board[y * g.size_x + x] & 0x4 > 0
 }
 
 func encode(y, x int) int {
@@ -203,7 +297,7 @@ func iterateGroup(g Goban, y, x int,
                   border_callback func(ny, nx int)) {
   color := g.GetColor(y, x)
   //next := NewListStack()
-  next := NewSliceStack(g.SizeX() * g.SizeX())
+  next := NewSliceStack(g.SizeX() * g.SizeY())
   marks := g.GetVisitorMarker()
   marks.ClearMarks()
   marks.SetMark(y, x)
@@ -463,7 +557,7 @@ func launchSinglePlay(state *GameState, moves []Position,
 func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
   moves := GetMoveList(state.goban, color)
   stats := make([]MoveStats, len(moves))
-  processors := 1 // runtime.NumCPU()
+  processors := runtime.NumCPU()
   runtime.GOMAXPROCS(processors)
   ch := make(chan GameResult, processors)
   for i := 0; i < processors; i++ {
@@ -501,6 +595,7 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
     plays += stats[i].total
   }
   fmt.Printf("%f plays/s\n", float32(plays) / float32(seconds))
+  fmt.Printf("%d stacks\n", slicestacks)
   return moves[best].y, moves[best].x
 }
 
@@ -509,6 +604,6 @@ func NewEmptyGameState(y, x int) *GameState {
 }
 
 func NewGameState(y, x int, komi float32, goban string) *GameState {
-    return &GameState{NewArrayGoban(y, x, goban), komi, 0, 0}
+    return &GameState{NewSliceGoban(y, x, goban), komi, 0, 0}
 }
 
