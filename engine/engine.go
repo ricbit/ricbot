@@ -4,6 +4,8 @@ import "container/list"
 import "math/rand"
 import "strings"
 import "fmt"
+import "time"
+import "runtime"
 
 const (
   EMPTY = iota
@@ -45,8 +47,22 @@ type ListStack struct {
   stack *list.List
 }
 
+type SliceStack struct {
+  stack []int
+}
+
+func (s *SliceStack) Push(value int) {
+  s.stack = append(s.stack, value)
+}
+
 func (s *ListStack) Push(value int) {
   s.stack.PushBack(value)
+}
+
+func (s *SliceStack) Pop() int {
+  value := s.stack[0]
+  s.stack = s.stack[1:]
+  return value
 }
 
 func (s *ListStack) Pop() int {
@@ -59,9 +75,19 @@ func (s *ListStack) Empty() bool {
   return s.stack.Len() == 0
 }
 
+func (s *SliceStack) Empty() bool {
+  return len(s.stack) == 0
+}
+
 func NewListStack() *ListStack {
   stack := new(ListStack)
   stack.stack = list.New()
+  return stack
+}
+
+func NewSliceStack(capacity int) *SliceStack {
+  stack := new(SliceStack)
+  stack.stack = make([]int, 0, capacity)
   return stack
 }
 
@@ -176,7 +202,8 @@ func iterateGroup(g Goban, y, x int,
                   group_callback func(ny, nx int),
                   border_callback func(ny, nx int)) {
   color := g.GetColor(y, x)
-  next := NewListStack()
+  //next := NewListStack()
+  next := NewSliceStack(g.SizeX() * g.SizeX())
   marks := g.GetVisitorMarker()
   marks.ClearMarks()
   marks.SetMark(y, x)
@@ -415,30 +442,65 @@ func copyState(state *GameState) *GameState {
   return new_state
 }
 
-func GetBestMove(state *GameState, color Color, tries int) (y, x int) {
+type GameResult struct {
+  move int
+  win bool
+}
+
+func launchSinglePlay(state *GameState, moves []Position,
+                      color Color, ch chan GameResult) {
+  for {
+    var result GameResult
+    result.move = rand.Intn(len(moves))
+    copy_state := copyState(state)
+    copy_state.goban.SetColor(moves[result.move].y, moves[result.move].x, color)
+    PlayRandomGame(copy_state, color)
+    result.win = Winner(copy_state) == color
+    ch <- result
+  }
+}
+
+func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
   moves := GetMoveList(state.goban, color)
   stats := make([]MoveStats, len(moves))
-  for i := 0; i < tries; i++ {
-    move := rand.Intn(len(moves))
-    copy_state := copyState(state)
-    copy_state.goban.SetColor(moves[move].y, moves[move].x, color)
-    PlayRandomGame(copy_state, color)
-    stats[move].total += 1
-    if Winner(copy_state) == color {
-      stats[move].win += 1
-    }
+  processors := 1 // runtime.NumCPU()
+  runtime.GOMAXPROCS(processors)
+  ch := make(chan GameResult, processors)
+  for i := 0; i < processors; i++ {
+    go launchSinglePlay(state, moves, color, ch)
   }
+  timeout := make(chan bool)
+  go func() {
+    time.Sleep(time.Duration(seconds) * time.Second)
+    timeout <- true
+  }()
+  func() {
+    for {
+      select {
+      case <-timeout:
+        return
+      case result := <-ch:
+        stats[result.move].total += 1
+        if result.win {
+          stats[result.move].win += 1
+        }
+      }
+    }
+  }()
   for i := 0; i < len(moves); i++ {
-    fmt.Printf("move %d %d : %d / %d = %f\n", 
+    fmt.Printf("move %d %d : %d / %d = %f\n",
                moves[i].y, moves[i].x, stats[i].win, stats[i].total,
                float32(stats[i].win) / float32(stats[i].total))
   }
   best := 0
-  for i := 1; i < len(moves); i++ {
+  plays := 0
+  for i := 0; i < len(moves); i++ {
     if stats[i].win * stats[best].total > stats[best].win * stats[i].total {
       best = i
     }
+    plays += stats[i].total
   }
+  fmt.Printf("%f plays/s\n", float32(plays) / float32(seconds))
   return moves[best].y, moves[best].x
 }
 
@@ -446,7 +508,7 @@ func NewEmptyGameState(y, x int) *GameState {
   return &GameState{NewArrayGoban(y, x, strings.Repeat(".", y * x)), 6.5, 0, 0}
 }
 
-func NewGameState(y, x int, goban string) *GameState {
-    return &GameState{NewArrayGoban(y, x, goban), 6.5, 0, 0}
+func NewGameState(y, x int, komi float32, goban string) *GameState {
+    return &GameState{NewArrayGoban(y, x, goban), komi, 0, 0}
 }
 

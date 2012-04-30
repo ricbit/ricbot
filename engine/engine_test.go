@@ -175,9 +175,9 @@ func (s *S) TestRemoveGroup(c *C) {
 }
 
 func (s *S) TestPlay(c *C) {
-  state1 := NewGameState(3, 4, "xxox" +
-                               "xo.x" +
-                               ".xx.")
+  state1 := NewGameState(3, 4, 0.0, "xxox" +
+                                    "xo.x" +
+                                    ".xx.")
   Play(state1, 1, 2, BLACK)
   c.Check(ToString(state1.goban), Equals, "xx.x" +
                                           "x.xx" +
@@ -185,9 +185,9 @@ func (s *S) TestPlay(c *C) {
   c.Check(state1.captured_white, Equals, 2)
   c.Check(state1.captured_black, Equals, 0)
 
-  state2 := NewGameState(3, 4, "xxox" +
-                               "xo.x" +
-                               ".xx.")
+  state2 := NewGameState(3, 4, 0.0, "xxox" +
+                                    "xo.x" +
+                                    ".xx.")
   Play(state2, 2, 0, WHITE)
   c.Check(ToString(state2.goban), Equals, "..ox" +
                                           ".o.x" +
@@ -246,3 +246,4 @@ func (s *S) TestGetRandomMoveEmpty(c *C) {
   _, ok := GetRandomMove(goban, WHITE)
   c.Check(ok, Equals, false)
 }
+
