@@ -26,13 +26,6 @@ type Stack interface {
   Empty() bool
 }
 
-// An allocator of Stacks, may be used to cache instances.
-type StackAllocator interface {
-  GetStack() Stack
-  Mark()
-  Release()
-}
-
 // --------------------------
 // Stack implementation using list, slow.
 
@@ -72,8 +65,9 @@ func (s *SliceStack) Push(value int) {
 }
 
 func (s *SliceStack) Pop() int {
-  value := s.stack[0]
-  s.stack = s.stack[1:]
+  last := len(s.stack) - 1
+  value := s.stack[last]
+  s.stack = s.stack[:last]
   return value
 }
 
@@ -89,21 +83,4 @@ func NewSliceStack(capacity int) *SliceStack {
   stack.stack = make([]int, 0, capacity)
   return stack
 }
-
-// --------------------------
-// A dumb allocator using no caches.
-
-type DumbAllocator struct {
-}
-
-func (a *DumbAllocator) GetStack() Stack {
-  return NewListStack()
-}
-
-func (a *DumbAllocator) Mark() {
-}
-
-func (a *DumbAllocator) Release() {
-}
-
 

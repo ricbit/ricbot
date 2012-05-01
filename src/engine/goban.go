@@ -33,8 +33,9 @@ type Goban interface {
   GetColor(y, x int) Color
   SetColor(y, x int, color Color)
   GetVisitorMarker() VisitorMarker
+  GetStack() Stack
+  SetStack(stack Stack)
   Copy() Goban
-  SetAllocator(alloc StackAllocator)
 }
 
 type VisitorMarker interface {
@@ -49,6 +50,7 @@ type VisitorMarker interface {
 type ArrayGoban struct {
   size_x, size_y int
   board [][]Color
+  stack Stack
 }
 
 func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
@@ -67,10 +69,8 @@ func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
       goban.board[j][i] = conv[init[j * size_x + i]]
     }
   }
+  goban.stack = NewSliceStack(size_x * size_y)
   return goban
-}
-
-func (g *ArrayGoban) SetAllocator(alloc StackAllocator) {
 }
 
 func (g *ArrayGoban) Copy() Goban {
@@ -121,12 +121,21 @@ func (g *ArrayGoban) IsMarked(y, x int) bool {
   return g.board[y][x] & 0x4 > 0
 }
 
+func (g *ArrayGoban) GetStack() Stack {
+  return g.stack
+}
+
+func (g *ArrayGoban) SetStack(stack Stack) {
+  g.stack = stack
+}
+
 // --------------------------
 // Goban implementation using a single slice.
 
 type SliceGoban struct {
   size_x, size_y int
   board []Color
+  stack Stack
 }
 
 func NewSliceGoban(size_y, size_x int, init string) *SliceGoban {
@@ -142,11 +151,8 @@ func NewSliceGoban(size_y, size_x int, init string) *SliceGoban {
   for j := 0; j < len(init); j++ {
     goban.board[j] = conv[init[j]]
   }
+  goban.stack = NewSliceStack(size_x * size_y)
   return goban
-}
-
-
-func (g *SliceGoban) SetAllocator(alloc StackAllocator) {
 }
 
 func (g *SliceGoban) Copy() Goban {
@@ -192,4 +198,11 @@ func (g *SliceGoban) IsMarked(y, x int) bool {
   return g.board[y * g.size_x + x] & 0x4 > 0
 }
 
+func (g *SliceGoban) GetStack() Stack {
+  return g.stack
+}
+
+func (g *SliceGoban) SetStack(stack Stack) {
+  g.stack = stack
+}
 

@@ -73,7 +73,8 @@ func iterateGroup(g Goban, y, x int,
                   border_callback func(ny, nx int)) {
   color := g.GetColor(y, x)
   //next := NewListStack()
-  next := NewSliceStack(g.SizeX() * g.SizeY())
+  //next := NewSliceStack(g.SizeX() * g.SizeY())
+  next := g.GetStack()
   marks := g.GetVisitorMarker()
   marks.ClearMarks()
   marks.SetMark(y, x)
@@ -141,6 +142,10 @@ func Suicide(g Goban, y, x int, color Color) bool {
   }
   g.SetColor(y, x, color)
   defer func() { g.SetColor(y, x, EMPTY) }()
+  // It's not suicide if you connect to a group with liberties.
+  if CountLiberties(g, y, x) > 0 {
+    return false
+  }
   // It's not suicide if you are capturing something.
   suicide := true
   opponent := Opposite(color)
@@ -152,11 +157,7 @@ func Suicide(g Goban, y, x int, color Color) bool {
       }
     }
   })
-  if !suicide {
-    return false
-  }
-  // It's not suicide if you connect to a group with liberties.
-  return CountLiberties(g, y, x) == 0
+  return suicide
 }
 
 func ValidMoves(g Goban, color Color, callback func (y, x int)) {
@@ -319,11 +320,13 @@ type GameResult struct {
 
 func launchSinglePlay(state *GameState, moves []Position,
                       color Color, ch chan GameResult) {
+  stack := NewSliceStack(state.goban.SizeX() * state.goban.SizeY())
   for {
     var result GameResult
     result.move = rand.Intn(len(moves))
     copy_state := copyState(state)
     copy_state.goban.SetColor(moves[result.move].y, moves[result.move].x, color)
+    copy_state.goban.SetStack(stack)
     PlayRandomGame(copy_state, color)
     result.win = Winner(copy_state) == color
     ch <- result
