@@ -22,153 +22,15 @@ import "fmt"
 import "time"
 import "runtime"
 
+// The game state.
 type GameState struct {
   goban Goban
   komi float32
   captured_white, captured_black int
 }
 
-type ArrayGoban struct {
-  size_x, size_y int
-  board [][]Color
-}
-
-type SliceGoban struct {
-  size_x, size_y int
-  board []Color
-}
-
-func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
-  goban := new(ArrayGoban)
-  goban.size_x = size_x
-  goban.size_y = size_y
-  goban.board = make([][]Color, size_y)
-  conv := map[byte] Color {
-    '.': EMPTY,
-    'o': WHITE,
-    'x': BLACK,
-  }
-  for j := 0; j < size_y; j++ {
-    goban.board[j] = make([]Color, size_x)
-    for i := 0; i < size_x; i++ {
-      goban.board[j][i] = conv[init[j * size_x + i]]
-    }
-  }
-  return goban
-}
-
-func NewSliceGoban(size_y, size_x int, init string) *SliceGoban {
-  goban := new(SliceGoban)
-  goban.size_x = size_x
-  goban.size_y = size_y
-  goban.board = make([]Color, size_y * size_x)
-  conv := map[byte] Color {
-    '.': EMPTY,
-    'o': WHITE,
-    'x': BLACK,
-  }
-  for j := 0; j < len(init); j++ {
-    goban.board[j] = conv[init[j]]
-  }
-  return goban
-}
-
-func (g *ArrayGoban) SetAllocator(alloc StackAllocator) {
-}
-
-func (g *SliceGoban) SetAllocator(alloc StackAllocator) {
-}
-
-func (g *ArrayGoban) Copy() Goban {
-  new_goban := new(ArrayGoban)
-  new_goban.size_x = g.size_x
-  new_goban.size_y = g.size_y
-  new_goban.board = make([][]Color, new_goban.size_y)
-  for i := 0; i < new_goban.size_y; i++ {
-    new_goban.board[i] = make([]Color, new_goban.size_x)
-    copy(new_goban.board[i], g.board[i])
-  }
-  return new_goban
-}
-
-func (g *SliceGoban) Copy() Goban {
-  new_goban := new(SliceGoban)
-  new_goban.size_x = g.size_x
-  new_goban.size_y = g.size_y
-  new_goban.board = make([]Color, new_goban.size_y * new_goban.size_x)
-  copy(new_goban.board, g.board)
-  return new_goban
-}
-
-func (g *ArrayGoban) SizeX() int {
-  return g.size_x
-}
-
-func (g *SliceGoban) SizeX() int {
-  return g.size_x
-}
-
-func (g *ArrayGoban) GetVisitorMarker() VisitorMarker {
-  return g
-}
-
-func (g *SliceGoban) GetVisitorMarker() VisitorMarker {
-  return g
-}
-
-func (g *ArrayGoban) SizeY() int {
-  return g.size_y
-}
-
-func (g *SliceGoban) SizeY() int {
-  return g.size_y
-}
-
-func (g *ArrayGoban) GetColor(y, x int) Color {
-  return g.board[y][x] & 0x3
-}
-
-func (g *SliceGoban) GetColor(y, x int) Color {
-  return g.board[y * g.size_x + x] & 0x3
-}
-
-func (g *ArrayGoban) SetColor(y, x int, color Color) {
-  g.board[y][x] = g.board[y][x] & (^0x3) | color
-}
-
-func (g *SliceGoban) SetColor(y, x int, color Color) {
-  g.board[y * g.size_x + x] = g.board[y * g.size_x + x] & (^0x3) | color
-}
-
-func (g *ArrayGoban) ClearMarks() {
-  for j := 0; j < g.size_y; j++ {
-    for i := 0; i < g.size_x; i++ {
-      g.board[j][i] &= 0x3
-    }
-  }
-}
-
-func (g *SliceGoban) ClearMarks() {
-  for j := 0; j < len(g.board); j++ {
-    g.board[j] &= 0x3
-  }
-}
-
-func (g *ArrayGoban) SetMark(y, x int) {
-  g.board[y][x] |= 0x4
-}
-
-func (g *SliceGoban) SetMark(y, x int) {
-  g.board[y * g.size_x + x] |= 0x4
-}
-
-func (g *ArrayGoban) IsMarked(y, x int) bool {
-  return g.board[y][x] & 0x4 > 0
-}
-
-func (g *SliceGoban) IsMarked(y, x int) bool {
-  return g.board[y * g.size_x + x] & 0x4 > 0
-}
+// --------------------------
+// Iterators over the Goban.
 
 func encode(y, x int) int {
   return y * 256 + x
@@ -233,16 +95,6 @@ func iterateGroup(g Goban, y, x int,
   }
 }
 
-func CountLiberties(g Goban, y, x int) int {
-  liberties := 0
-  iterateGroup(g, y, x, func (ny, nx int) {}, func (ny, nx int) {
-    if g.GetColor(ny, nx) == EMPTY {
-      liberties++
-    }
-  })
-  return liberties
-}
-
 func iterateAll(g Goban, callback func(y, x int)) {
   for j := 0; j < g.SizeY(); j++ {
     for i := 0; i < g.SizeX(); i++ {
@@ -257,6 +109,16 @@ func iterateAllColor(g Goban, color Color, callback func(y, x int)) {
       callback(y, x)
     }
   })
+}
+
+func CountLiberties(g Goban, y, x int) int {
+  liberties := 0
+  iterateGroup(g, y, x, func (ny, nx int) {}, func (ny, nx int) {
+    if g.GetColor(ny, nx) == EMPTY {
+      liberties++
+    }
+  })
+  return liberties
 }
 
 func Opposite(color Color) Color {
