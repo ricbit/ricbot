@@ -1,6 +1,6 @@
 package main
 
-import . "./engine"
+import . "engine"
 import "fmt"
 
 func main() {

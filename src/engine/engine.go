@@ -38,12 +38,6 @@ type GameState struct {
   captured_white, captured_black int
 }
 
-type Stack interface {
-  Push(int)
-  Pop() int
-  Empty() bool
-}
-
 type StackAllocator interface {
   GetStack() Stack
   Mark()
