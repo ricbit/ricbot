@@ -45,6 +45,23 @@ type VisitorMarker interface {
 }
 
 // --------------------------
+// These functions work with any Goban implementation.
+
+var ascii_map = map[byte] Color {
+  '.': EMPTY,
+  'o': WHITE,
+  'x': BLACK,
+ }
+
+func FromString(g Goban, s string) {
+  for j := 0; j < g.SizeY(); j++ {
+    for i := 0; i < g.SizeX(); i++ {
+      g.SetColor(j, i, ascii_map[s[j * g.SizeX() + i]])
+    }
+  }
+}
+
+// --------------------------
 // Goban implementation using a 2D array.
 
 type ArrayGoban struct {
@@ -53,21 +70,13 @@ type ArrayGoban struct {
   stack Stack
 }
 
-func NewArrayGoban(size_y, size_x int, init string) *ArrayGoban {
+func NewArrayGoban(size_y, size_x int) *ArrayGoban {
   goban := new(ArrayGoban)
   goban.size_x = size_x
   goban.size_y = size_y
   goban.board = make([][]Color, size_y)
-  conv := map[byte] Color {
-    '.': EMPTY,
-    'o': WHITE,
-    'x': BLACK,
-  }
   for j := 0; j < size_y; j++ {
     goban.board[j] = make([]Color, size_x)
-    for i := 0; i < size_x; i++ {
-      goban.board[j][i] = conv[init[j * size_x + i]]
-    }
   }
   goban.stack = NewSliceStack(size_x * size_y)
   return goban
@@ -138,19 +147,11 @@ type SliceGoban struct {
   stack Stack
 }
 
-func NewSliceGoban(size_y, size_x int, init string) *SliceGoban {
+func NewSliceGoban(size_y, size_x int) *SliceGoban {
   goban := new(SliceGoban)
   goban.size_x = size_x
   goban.size_y = size_y
   goban.board = make([]Color, size_y * size_x)
-  conv := map[byte] Color {
-    '.': EMPTY,
-    'o': WHITE,
-    'x': BLACK,
-  }
-  for j := 0; j < len(init); j++ {
-    goban.board[j] = conv[init[j]]
-  }
   goban.stack = NewSliceStack(size_x * size_y)
   return goban
 }

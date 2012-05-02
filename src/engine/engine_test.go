@@ -19,55 +19,14 @@ package engine
 import . "launchpad.net/gocheck"
 import "testing"
 
-func TestNewArrayGoban(t *testing.T) {
-  goban := NewArrayGoban(3, 4, ".o.." +
-                               "...." +
-                               "..x.")
-  if goban.SizeX() != 4 || goban.SizeY() != 3 {
-    t.Error("wrong size")
-  }
-  for j := 0; j < 3; j++ {
-    for i := 0; i < 4; i++ {
-      switch {
-      case i == 1 && j == 0:
-        if goban.GetColor(j, i) != WHITE {
-          t.Error("GetColor white.")
-        }
-      case i == 2 && j == 2:
-        if goban.GetColor(j, i) != BLACK {
-          t.Error("GetColor black.")
-        }
-      default:
-        if goban.GetColor(j, i) != EMPTY {
-          t.Error("GetColor empty.")
-        }
-      }
-    }
-  }
-}
-
-func TestArrayGobanVisitorMarker(t *testing.T) {
-  goban := NewArrayGoban(1, 1, ".")
-  marker := goban.GetVisitorMarker()
-  marker.ClearMarks()
-  if marker.IsMarked(0, 0) {
-    t.Error("Clear not working")
-  }
-  marker.SetMark(0, 0)
-  if !marker.IsMarked(0, 0) {
-    t.Error("SetMark not working")
-  }
-  marker.SetMark(0, 0)
-  if !marker.IsMarked(0, 0) {
-    t.Error("SetMark not working")
-  }
-  if goban.GetColor(0, 0) != EMPTY {
-    t.Error("GetColor not working")
-  }
+func CreateArrayGoban(y, x int, s string) Goban {
+  goban := NewArrayGoban(y, x)
+  FromString(goban, s)
+  return goban
 }
 
 func TestCountLiberties(t *testing.T) {
-  goban := NewArrayGoban(3, 9, "o.o..ooo." +
+  goban := CreateArrayGoban(3, 9, "o.o..ooo." +
                                ".o.x.o.o." +
                                "..xx.ooxx")
   if CountLiberties(goban, 0, 0) != 2 {
@@ -91,7 +50,7 @@ func TestCountLiberties(t *testing.T) {
 }
 
 func TestSuicide(t *testing.T) {
-  goban := NewArrayGoban(3, 9, ".x..x.xxx" +
+  goban := CreateArrayGoban(3, 9, ".x..x.xxx" +
                                "x.xxx.xoo" +
                                ".xo.x.xo.")
   testcases := []struct {
@@ -136,7 +95,7 @@ func comparePoints(t *testing.T, expected, actual []Position) {
 }
 
 func TestValidMoves(t *testing.T) {
-  goban := NewArrayGoban(3, 4, ".xox" +
+  goban := CreateArrayGoban(3, 4, ".xox" +
                                "xo.x" +
                                ".xx.")
   expected_white := []Position {
@@ -173,7 +132,7 @@ func ToString(g Goban) string {
 }
 
 func (s *S) TestRemoveGroup(c *C) {
-  goban1 := NewArrayGoban(3, 4, "xxox" +
+  goban1 := CreateArrayGoban(3, 4, "xxox" +
                                 "xo.x" +
                                 ".xx.")
   c.Check(RemoveGroup(goban1, 0, 0), Equals, 3)
@@ -181,7 +140,7 @@ func (s *S) TestRemoveGroup(c *C) {
                                     ".o.x" +
                                     ".xx.")
 
-  goban2 := NewArrayGoban(3, 4, "xxox" +
+  goban2 := CreateArrayGoban(3, 4, "xxox" +
                                 "xo.x" +
                                 ".xx.")
   c.Check(RemoveGroup(goban2, 0, 2), Equals, 1)
@@ -213,7 +172,7 @@ func (s *S) TestPlay(c *C) {
 }
 
 func (s *S) TestSinglePointEye(c *C) {
-  goban := NewArrayGoban(3, 4, "..ox" +
+  goban := CreateArrayGoban(3, 4, "..ox" +
                                "oxxx" +
                                "x.x.")
   color, ok := SinglePointEye(goban, 2, 3)
@@ -228,7 +187,7 @@ func (s *S) TestSinglePointEye(c *C) {
 }
 
 func (s *S) TestEstimatePoints(c *C) {
-  goban := NewArrayGoban(3, 4, ".o.x" +
+  goban := CreateArrayGoban(3, 4, ".o.x" +
                                "ooxx" +
                                "xxx.")
   black, white := EstimatePoints(goban)
@@ -237,7 +196,7 @@ func (s *S) TestEstimatePoints(c *C) {
 }
 
 func (s *S) TestGetRandomMove(c *C) {
-  goban := NewArrayGoban(1, 4, "....")
+  goban := CreateArrayGoban(1, 4, "....")
   histogram := make([]int, 4)
   lots := 10000
   for i := 0; i < lots; i++ {
@@ -258,7 +217,7 @@ func (s *S) TestGetRandomMove(c *C) {
 }
 
 func (s *S) TestGetRandomMoveEmpty(c *C) {
-  goban := NewArrayGoban(1, 4, "xoxo")
+  goban := CreateArrayGoban(1, 4, "xoxo")
   _, ok := GetRandomMove(goban, WHITE)
   c.Check(ok, Equals, false)
 }

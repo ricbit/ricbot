@@ -379,10 +379,14 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
 }
 
 func NewEmptyGameState(y, x int) *GameState {
-  return &GameState{NewArrayGoban(y, x, strings.Repeat(".", y * x)), 6.5, 0, 0}
+  goban := NewArrayGoban(y, x)
+  FromString(goban, strings.Repeat(".", y * x))
+  return &GameState{goban, 6.5, 0, 0}
 }
 
-func NewGameState(y, x int, komi float32, goban string) *GameState {
-    return &GameState{NewSliceGoban(y, x, goban), komi, 0, 0}
+func NewGameState(y, x int, komi float32, init string) *GameState {
+  goban := NewSliceGoban(y, x)
+  FromString(goban, init)
+  return &GameState{goban, komi, 0, 0}
 }
 
