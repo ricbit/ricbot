@@ -17,10 +17,14 @@
 package engine
 
 import . "launchpad.net/gocheck"
-import "testing"
 
 func (s *S) TestArrayGoban(c *C) {
   goban := NewArrayGoban(3, 4)
+  checkGoban(c, goban)
+}
+
+func (s *S) TestSliceGoban(c *C) {
+  goban := NewSliceGoban(3, 4)
   checkGoban(c, goban)
 }
 
@@ -44,24 +48,26 @@ func checkGoban(c *C, goban Goban) {
   }
 }
 
-func TestArrayGobanVisitorMarker(t *testing.T) {
-  goban := CreateArrayGoban(1, 1, ".")
+func (s *S) TestArrayGobanVisitorMarker(c *C) {
+  goban := NewArrayGoban(1, 1)
+  checkGobanVisitorMarker(c, goban)
+}
+
+func (s *S) TestSliceGobanVisitorMarker(c *C) {
+  goban := NewSliceGoban(1, 1)
+  checkGobanVisitorMarker(c, goban)
+}
+
+func checkGobanVisitorMarker(c *C, goban Goban) {
+  FromString(goban , ".")
   marker := goban.GetVisitorMarker()
   marker.ClearMarks()
-  if marker.IsMarked(0, 0) {
-    t.Error("Clear not working")
-  }
+  c.Check(marker.IsMarked(0, 0), Equals, false)
   marker.SetMark(0, 0)
-  if !marker.IsMarked(0, 0) {
-    t.Error("SetMark not working")
-  }
+  c.Check(marker.IsMarked(0, 0), Equals, true)
   marker.SetMark(0, 0)
-  if !marker.IsMarked(0, 0) {
-    t.Error("SetMark not working")
-  }
-  if goban.GetColor(0, 0) != EMPTY {
-    t.Error("GetColor not working")
-  }
+  c.Check(marker.IsMarked(0, 0), Equals, true)
+  c.Check(goban.GetColor(0, 0), Equals, Color(EMPTY))
 }
 
 
