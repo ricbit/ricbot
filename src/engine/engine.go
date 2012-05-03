@@ -21,6 +21,7 @@ import "strings"
 import "fmt"
 import "time"
 import "runtime"
+import "os"
 
 // The game state.
 type GameState struct {
@@ -302,6 +303,7 @@ func Winner(state *GameState) Color {
 
 type MoveStats struct {
   win, total int
+  rate float64
 }
 
 func copyState(state *GameState) *GameState {
@@ -321,14 +323,37 @@ type GameResult struct {
 func launchSinglePlay(state *GameState, moves []Position,
                       color Color, ch chan GameResult) {
   stack := NewSliceStack(state.goban.SizeX() * state.goban.SizeY())
+  stats := make([]MoveStats, len(moves))
+  for i := 0; i < len(stats); i++ {
+    stats[i].total = 2
+    stats[i].win = 1
+    stats[i].rate = 0.5
+  }
   for {
+    var total float64 = 0.0
+    for i := 0; i < len(stats); i++ {
+      total += stats[i].rate
+    }
+    var p = rand.Float64() * total
     var result GameResult
-    result.move = rand.Intn(len(moves))
+    for i := 0; i < len(stats); i++ {
+      result.move = i
+      if p < stats[i].rate {
+        break
+      }
+      p -= stats[i].rate
+    }
     copy_state := copyState(state)
     copy_state.goban.SetColor(moves[result.move].y, moves[result.move].x, color)
     copy_state.goban.SetStack(stack)
     PlayRandomGame(copy_state, color)
     result.win = Winner(copy_state) == color
+    stats[result.move].total += 1
+    if result.win {
+      stats[result.move].win += 1
+    }
+    stats[result.move].rate = float64(stats[result.move].win) /
+                              float64(stats[result.move].total)
     ch <- result
   }
 }
@@ -360,11 +385,11 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
       }
     }
   }()
-/*  for i := 0; i < len(moves); i++ {
-    fmt.Printf("# move %d %d : %d / %d = %f\n",
-               moves[i].y, moves[i].x, stats[i].win, stats[i].total,
-               float32(stats[i].win) / float32(stats[i].total))
-  }*/
+  for i := 0; i < len(moves); i++ {
+    fmt.Fprintf(os.Stderr, "# move %d %d : %d / %d = %f\n",
+                moves[i].y, moves[i].x, stats[i].win, stats[i].total,
+                float32(stats[i].win) / float32(stats[i].total))
+  }
   best := 0
   plays := 0
   for i := 0; i < len(moves); i++ {
@@ -373,8 +398,8 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
     }
     plays += stats[i].total
   }
-  //fmt.Printf("# %f plays/s\n", float32(plays) / float32(seconds))
-  //fmt.Printf("# %d stacks\n", slicestacks)
+  fmt.Ffrintf(os.Stderr,"# %f plays/s\n", float32(plays) / float32(seconds))
+  fmt.Ffrintf(os.Stderr,"# %d stacks\n", slicestacks)
   return moves[best].y, moves[best].x
 }
 

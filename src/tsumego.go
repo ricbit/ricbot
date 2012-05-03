@@ -25,8 +25,8 @@ func main() {
                                    "oxxox.." +
                                    "o.ox..." +
                                    "..oxxx." +
-                                   "..o.oo." +
+                                   "ooo.oo." +
                                    "...o...")
-  y, x := GetBestMove(state, BLACK, 150)
+  y, x := GetBestMove(state, BLACK, 30)
   fmt.Printf("move %d %d\n", y, x)
 }

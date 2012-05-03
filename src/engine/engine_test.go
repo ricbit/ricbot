@@ -73,6 +73,23 @@ func TestSuicide(t *testing.T) {
                tc.y, tc.x, tc.color, tc.expected)
     }
   }
+  goban2 := CreateArrayGoban(3, 3, "xxx" +
+                                   "x.x" +
+                                   ".xx")
+  testcases2 := []struct {
+    y, x int
+    color Color
+    expected bool
+  } {
+    {2, 0, WHITE, true},
+    {2, 0, BLACK, false},
+  }
+  for _, tc := range testcases2 {
+    if Suicide(goban2, tc.y, tc.x, tc.color) != tc.expected {
+      t.Errorf("Error in %d, %d for color %v, expecting %v",
+               tc.y, tc.x, tc.color, tc.expected)
+    }
+  }
 }
 
 func comparePoints(t *testing.T, expected, actual []Position) {

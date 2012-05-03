@@ -26,6 +26,6 @@ func main() {
                                    "xo.oox" +
                                    "xooox." +
                                    ".xxx.x")
-  y, x := GetBestMove(state, BLACK, 5)
+  y, x := GetBestMove(state, BLACK, 30)
   fmt.Printf("move %d %d\n", y, x)
 }
