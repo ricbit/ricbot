@@ -360,11 +360,11 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
       }
     }
   }()
-  for i := 0; i < len(moves); i++ {
-    fmt.Printf("move %d %d : %d / %d = %f\n",
+/*  for i := 0; i < len(moves); i++ {
+    fmt.Printf("# move %d %d : %d / %d = %f\n",
                moves[i].y, moves[i].x, stats[i].win, stats[i].total,
                float32(stats[i].win) / float32(stats[i].total))
-  }
+  }*/
   best := 0
   plays := 0
   for i := 0; i < len(moves); i++ {
@@ -373,8 +373,8 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
     }
     plays += stats[i].total
   }
-  fmt.Printf("%f plays/s\n", float32(plays) / float32(seconds))
-  fmt.Printf("%d stacks\n", slicestacks)
+  //fmt.Printf("# %f plays/s\n", float32(plays) / float32(seconds))
+  //fmt.Printf("# %d stacks\n", slicestacks)
   return moves[best].y, moves[best].x
 }
 

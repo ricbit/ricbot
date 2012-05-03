@@ -16,20 +16,23 @@
 
 package gtp
 
-//import "engine"
+import "engine"
 import "io"
 import "bufio"
 import "strings"
 import "bytes"
 import "fmt"
+import "strconv"
 
-type GTP interface {
+type Driver interface {
   Run(reader io.Reader, writer io.Writer)
 }
 
 type Session struct {
-
 }
+
+// TODO(ricbit): Remove this global var.
+var state *engine.GameState
 
 type Handler func ([]string) string
 
@@ -37,10 +40,15 @@ var commands = map[string] Handler {
   "name" : Name,
   "protocol_version" : ProtocolVersion,
   "version" : Version,
+  "boardsize" : BoardSize,
+  "clear_board" : ClearBoard,
+  "play" : Play,
+  "genmove" : GenMove,
 }
 
 func (s *Session) Run(reader io.Reader, writer io.Writer) {
   buf := bufio.NewReader(reader)
+  state = new(engine.GameState)
   for {
     line, _, ok := buf.ReadLine()
     if ok != nil {
@@ -51,11 +59,7 @@ func (s *Session) Run(reader io.Reader, writer io.Writer) {
       case "quit":
         return
       case "list_commands":
-        output := make([]string, 0)
-        for command, _ := range commands {
-          output = append(output, command)
-        }
-        fmt.Fprint(writer, "= " + strings.Join(output, "\n") + "\n\n")
+        fmt.Fprint(writer, "= " + ListCommands() + "\n\n")
       default:
         if handler, ok := commands[args[0]]; ok {
           fmt.Fprint(writer, "= " + handler(args[1:]) + "\n\n")
@@ -78,10 +82,55 @@ func Version(args []string) string {
   return "1.0"
 }
 
-func ListCommands(args []string) string {
+func ListCommands() string {
   output := make([]string, 0)
   for command, _ := range commands {
     output = append(output, command)
   }
   return strings.Join(output, "\n")
 }
+
+func BoardSize(args []string) string {
+  size, _ := strconv.Atoi(args[0])
+  state.BoardSize(size)
+  return ""
+}
+
+func ClearBoard(args []string) string {
+  state.ClearBoard()
+  return ""
+}
+
+func stringToColor(s string) engine.Color {
+  switch strings.ToLower(s)[0] {
+  case 'b':
+    return engine.BLACK
+  case 'w':
+    return engine.WHITE
+  }
+  return engine.EMPTY
+}
+
+func stringToPosition(s string) (y, x int) {
+  x = int(strings.ToLower(s)[0]) - int('a')
+  temp, _ := strconv.Atoi(s[1:])
+  y = temp - 1
+  return y, x
+}
+
+func Play(args []string) string {
+  color := stringToColor(args[0])
+  y, x := stringToPosition(args[1])
+  state.Play(y, x, color)
+  return ""
+}
+
+func GenMove(args []string) string {
+  color := stringToColor(args[0])
+  y, x := state.GenMove(color)
+  state.Play(y, x, color)
+  return fmt.Sprintf("%s%d", string(int('a') + x), y + 1)
+}
+
+
+
