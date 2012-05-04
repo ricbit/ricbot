@@ -1,0 +1,25 @@
+Instructions for a linux install (windows coming soon):
+
+1. Install the Go 1 language: 
+
+http://golang.org/doc/install
+
+2. Grab this code with: 
+
+git clone https://code.google.com/p/ricbot
+
+3. Set up the gopath, pointing it to wherever you downloaded the code:
+
+export GOPATH=/home/ricbit/ricbot
+
+4. Compile ricbot:
+
+go build ricbot.go
+
+5. Download gogui:
+
+http://gogui.sourceforge.net/
+
+6. Launch gogui, then select on its menu: 
+
+Program, New Program, and then point it to the ricbot binary you compiled.
