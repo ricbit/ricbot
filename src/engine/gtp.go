@@ -20,7 +20,8 @@ type GTP interface {
   BoardSize(size int)
   ClearBoard()
   Play(y, x int, color Color)
-  GenMove(color Color) (y, x int)
+  GenMove(color Color) (y, x int, pass bool)
+  Komi(komi float32)
 }
 
 func (s *GameState) BoardSize(size int) {
@@ -34,10 +35,14 @@ func (s *GameState) ClearBoard() {
 }
 
 func (s *GameState) Play(y, x int, color Color) {
-  s.goban.SetColor(y, x, color)
+  Play(s, y, x, color)
 }
 
-func (s *GameState) GenMove(color Color) (y, x int) {
-  return GetBestMove(s, color, 30)
+func (s *GameState) Komi(komi float32) {
+  s.komi = komi
+}
+
+func (s *GameState) GenMove(color Color) (y, x int, pass bool) {
+  return GetBestMove(s, color, 2)
 }
 

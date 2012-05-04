@@ -44,6 +44,7 @@ var commands = map[string] Handler {
   "clear_board" : ClearBoard,
   "play" : Play,
   "genmove" : GenMove,
+  "komi" : Komi,
 }
 
 func (s *Session) Run(reader io.Reader, writer io.Writer) {
@@ -120,6 +121,9 @@ func stringToPosition(s string) (y, x int) {
 
 func Play(args []string) string {
   color := stringToColor(args[0])
+  if strings.ToLower(args[1]) == "pass" {
+    return ""
+  }
   y, x := stringToPosition(args[1])
   state.Play(y, x, color)
   return ""
@@ -127,9 +131,18 @@ func Play(args []string) string {
 
 func GenMove(args []string) string {
   color := stringToColor(args[0])
-  y, x := state.GenMove(color)
+  y, x, pass := state.GenMove(color)
+  if pass {
+    return "pass"
+  }
   state.Play(y, x, color)
   return fmt.Sprintf("%s%d", string(int('a') + x), y + 1)
+}
+
+func Komi(args []string) string {
+  komi, _ := strconv.ParseFloat(args[0], 32)
+  state.Komi(float32(komi))
+  return ""
 }
 
 

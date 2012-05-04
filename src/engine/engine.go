@@ -225,11 +225,16 @@ type Position struct {
   y, x int
 }
 
+var dump bool = false
+
 func GetMoveList(g Goban, color Color) []Position {
   moves := make([]Position, 0, g.SizeY() * g.SizeX())
   ValidMoves(g, color, func (y, x int) {
     moves = append(moves, Position{y, x})
   })
+  if (dump) {
+    fmt.Fprintf(os.Stderr, "# %v\n", moves)
+  }
   return moves
 }
 
@@ -257,6 +262,21 @@ func dumpState(state *GameState) {
     fmt.Printf("\n")
   }
   fmt.Printf("\n")
+}
+
+func dumpGoban(goban Goban) {
+  conv := map[Color] string {
+    EMPTY : ".",
+    BLACK : "x",
+    WHITE : "o",
+  }
+  for j := 0; j < goban.SizeY(); j++ {
+    for i := 0; i < goban.SizeX(); i++ {
+      fmt.Fprintf(os.Stderr, conv[goban.GetColor(j, i)])
+    }
+    fmt.Fprintf(os.Stderr, "\n")
+  }
+  fmt.Fprintf(os.Stderr, "\n")
 }
 
 func PlayRandomGame(state *GameState, color Color) {
@@ -295,7 +315,7 @@ func EstimatePoints(g Goban) (black, white int) {
 
 func Winner(state *GameState) Color {
   black, white := EstimatePoints(state.goban)
-  if float32(black) + state.komi > float32(white) {
+  if float32(black) > float32(white) + state.komi {
     return BLACK
   }
   return WHITE
@@ -358,8 +378,15 @@ func launchSinglePlay(state *GameState, moves []Position,
   }
 }
 
-func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
+func GetBestMove(state *GameState, color Color, seconds int) (
+    y, x int, pass bool) {
+  dump = true
+  dumpGoban(state.goban)
   moves := GetMoveList(state.goban, color)
+  dump = false
+  if len(moves) == 0 {
+    return 0, 0, true
+  }
   stats := make([]MoveStats, len(moves))
   processors := runtime.NumCPU()
   runtime.GOMAXPROCS(processors)
@@ -398,9 +425,9 @@ func GetBestMove(state *GameState, color Color, seconds int) (y, x int) {
     }
     plays += stats[i].total
   }
-  fmt.Ffrintf(os.Stderr,"# %f plays/s\n", float32(plays) / float32(seconds))
-  fmt.Ffrintf(os.Stderr,"# %d stacks\n", slicestacks)
-  return moves[best].y, moves[best].x
+  fmt.Fprintf(os.Stderr,"# %f plays/s\n", float32(plays) / float32(seconds))
+  fmt.Fprintf(os.Stderr,"# %d stacks\n", slicestacks)
+  return moves[best].y, moves[best].x, false
 }
 
 func NewEmptyGameState(y, x int) *GameState {
