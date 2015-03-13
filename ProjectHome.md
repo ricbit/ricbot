@@ -1,0 +1,1 @@
+Artificial inteligence to play the game of Go. Currently it implements the monte carlo tree search method.
